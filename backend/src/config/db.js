@@ -15,6 +15,7 @@ const pool = mysql.createPool({
   timezone: 'Z',
   dateStrings: ['DATE'],
   namedPlaceholders: true,
+  ssl: process.env.DB_SSL=== 'true' ?{rejectUnauthorized: false} : undefined,
 });
 
 async function checkConnection() {
@@ -22,7 +23,7 @@ async function checkConnection() {
   try {
     await pool.query('SELECT 1');
     return { ok: true, latencyMs: Date.now() - started };
-  } catch (err) {
+  } catch (err) { console.error('DB check failed', err.code, err.message);
     return { ok: false, latencyMs: null };
   }
 }
