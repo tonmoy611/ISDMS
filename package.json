@@ -1,0 +1,16 @@
+{
+  "name": "isdms",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integrated Student Database Management System by TD-X Lab",
+  "license": "UNLICENSED",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "migrate": "node scripts/migrate.js",
+    "test": "npm --prefix backend test",
+    "create-admin": "node scripts/create-super-admin.js"
+  }
+}
