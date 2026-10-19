@@ -3,7 +3,8 @@ const env = require('../config/env');
 
 const ACCESS = 'isdms_at';
 const REFRESH = 'isdms_rt';
-const base = { httpOnly: true, secure: env.auth.cookieSecure, sameSite: 'lax' };
+const isProd = process.env.NODE_ENV === 'production';
+const base = { httpOnly: true, secure: isProd, sameSite: isProd ? 'none' : 'lax' };
 const refreshPath = `${env.apiPrefix}/auth`;
 
 function setAuthCookies(res, { accessToken, refreshToken }) {
