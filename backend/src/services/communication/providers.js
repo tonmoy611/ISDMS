@@ -1,4 +1,4 @@
-'use strict';
+ 'use strict';
 const env = require('../../config/env');
 
 /** BD mobile numbers to the 8801XXXXXXXXX form most local gateways expect. */
@@ -6,6 +6,18 @@ function normalizeBdPhone(raw) {
   const d = String(raw).replace(/[^\d]/g, '');
   if (/^01\d{9}$/.test(d)) return `88${d}`;
   return d;
+}
+
+/** Parses 'ISDMS <no-reply@example.edu>' or 'no-reply@example.edu' into { email, name? } (Brevo sender format). */
+function parseSender(raw) {
+  const s = String(raw || '').trim().replace(/^"+|"+$/g, '');
+  const match = s.match(/^(.*?)\s*<([^>]+)>$/);
+  if (match) {
+    const name = match[1].trim().replace(/^"+|"+$/g, '');
+    const email = match[2].trim();
+    return name ? { email, name } : { email };
+  }
+  return { email: s, name: env.appName };
 }
 
 // Every provider: async send(message) -> { id?, logged? }. It must THROW on failure; it must never pretend to succeed.
@@ -43,26 +55,30 @@ const emailProviders = {
   },
 
   // Brevo HTTP API: works on hosts that block outbound SMTP ports (like Render free).
+  // Needs BREVO_API_KEY and EMAIL_FROM; the sender address must be verified in Brevo.
   brevo: {
     name: 'brevo',
     async send(m) {
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      if (!env.email.brevoApiKey) throw new Error('Brevo is not configured: BREVO_API_KEY is missing');
+      const sender = parseSender(env.email.from);
+      if (!sender.email) throw new Error('Brevo is not configured: EMAIL_FROM is missing');
+
+      const payload = {
+        sender,
+        to: [{ email: m.to }],
+        subject: m.subject,
+        textContent: m.text,
+      };
+      if (m.html) payload.htmlContent = m.html;
+
+      const res = await fetch(env.email.brevoApiUrl, {
         method: 'POST',
         headers: {
-          'api-key': process.env.BREVO_API_KEY,
+          'api-key': env.email.brevoApiKey,
           'Content-Type': 'application/json',
           accept: 'application/json',
         },
-        body: JSON.stringify({
-          sender: {
-            email: process.env.MAIL_FROM,
-            name: process.env.MAIL_FROM_NAME || 'ISDMS',
-          },
-          to: [{ email: m.to }],
-          subject: m.subject,
-          textContent: m.text,
-          htmlContent: m.html,
-        }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000),
       });
       const body = await res.json().catch(() => null);

@@ -1,4 +1,4 @@
-'use strict';
+ 'use strict';
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
@@ -48,9 +48,11 @@ env.timezone = process.env.APP_TIMEZONE || 'Asia/Dhaka'; // used to decide what 
 env.attendanceEditDays = int(process.env.ATTENDANCE_EDIT_DAYS, 7);
 env.appUrl = process.env.APP_URL || 'http://localhost:5173';
 env.email = {
-  provider: process.env.EMAIL_PROVIDER || 'log', // smtp | log (log is development only)
+  provider: process.env.EMAIL_PROVIDER || 'log', // smtp | brevo | log (log is development only)
   host: process.env.SMTP_HOST || '', port: int(process.env.SMTP_PORT, 587), secure: process.env.SMTP_SECURE === 'true',
   user: process.env.SMTP_USER || '', pass: process.env.SMTP_PASSWORD || '', from: process.env.EMAIL_FROM || '',
+  brevoApiKey: process.env.BREVO_API_KEY || '',
+  brevoApiUrl: process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email',
 };
 env.sms = {
   provider: process.env.SMS_PROVIDER || 'log', // none | log | bulksmsbd
@@ -69,8 +71,13 @@ if (env.isProd) {
   if (!env.db.password) missing.push('DB_PASSWORD');
   if (!env.db.database) missing.push('DB_NAME');
   if (!env.corsOrigins.length) missing.push('CORS_ORIGINS');
-  if (env.email.provider !== 'smtp') missing.push('EMAIL_PROVIDER=smtp');
-  else for (const [k, val] of [['SMTP_HOST', env.email.host], ['EMAIL_FROM', env.email.from]]) if (!val) missing.push(k);
+  if (env.email.provider === 'smtp') {
+    for (const [k, val] of [['SMTP_HOST', env.email.host], ['EMAIL_FROM', env.email.from]]) if (!val) missing.push(k);
+  } else if (env.email.provider === 'brevo') {
+    for (const [k, val] of [['BREVO_API_KEY', env.email.brevoApiKey], ['EMAIL_FROM', env.email.from]]) if (!val) missing.push(k);
+  } else {
+    missing.push('EMAIL_PROVIDER (smtp or brevo; "log" is development only)');
+  }
   if (env.sms.provider === 'log') missing.push('SMS_PROVIDER (none or a real provider; "log" is development only)');
   if (env.sms.provider === 'bulksmsbd') for (const [k, val] of [['SMS_API_KEY', env.sms.apiKey], ['SMS_SENDER_ID', env.sms.senderId]]) if (!val) missing.push(k);
   if (!process.env.APP_URL) missing.push('APP_URL');
